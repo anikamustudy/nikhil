@@ -9,8 +9,8 @@ use App\Models\BankType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use App\Traits\ModelFetcher;
 use App\Traits\HandlesApiActions;
+use App\Traits\ModelFetcher;
 use Illuminate\Support\Facades\Log;
 use App\Services\NotificationService;
 use App\Http\Requests\StoreJoinUsRequest;
@@ -28,6 +28,45 @@ class MembershipRequestController extends ApiController
         $this->notificationService = $notificationService;
     }
 
+    /**
+     * @OA\Get(
+     *     path="/admin/membership-requests",
+     *     summary="List all membership requests (Admin)",
+     *     tags={"Membership Requests"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of membership requests",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Membership requests retrieved successfully"),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="members", type="array",
+     *                     @OA\Items(
+     *                         @OA\Property(property="id", type="integer", example=1),
+     *                         @OA\Property(property="name", type="string", example="John Doe"),
+     *                         @OA\Property(property="email", type="string", example="john@example.com"),
+     *                         @OA\Property(property="role", type="object",
+     *                             @OA\Property(property="id", type="integer", example=2),
+     *                             @OA\Property(property="name", type="string", example="Member")
+     *                         ),
+     *                         @OA\Property(property="status", type="object",
+     *                             @OA\Property(property="id", type="integer", example=1),
+     *                             @OA\Property(property="name", type="string", example="Pending")
+     *                         ),
+     *                         @OA\Property(property="bank_type", type="object", nullable=true,
+     *                             @OA\Property(property="id", type="integer", example=1),
+     *                             @OA\Property(property="name", type="string", example="Savings")
+     *                         )
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Unauthorized (not admin)"),
+     *     @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function index(Request $request)
     {
         return $this->withExceptionHandling(function () use ($request) {
@@ -41,6 +80,32 @@ class MembershipRequestController extends ApiController
         });
     }
 
+    /**
+     * @OA\Post(
+     *     path="/membership-request",
+     *     summary="Submit a membership request",
+     *     tags={"Membership Requests"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="name", type="string", example="John Doe"),
+     *             @OA\Property(property="email", type="string", example="john@example.com"),
+     *             @OA\Property(property="role", type="string", example="member"),
+     *             @OA\Property(property="bank_type_id", type="integer", example=1, nullable=true),
+     *             @OA\Property(property="message", type="string", example="I want to join", nullable=true)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Membership request submitted",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Registration request submitted successfully. You will receive your password once approved.")
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation error"),
+     *     @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function store(StoreJoinUsRequest $request)
     {
         return $this->withExceptionHandling(function () use ($request) {
@@ -59,6 +124,51 @@ class MembershipRequestController extends ApiController
         });
     }
 
+    /**
+     * @OA\Put(
+     *     path="/admin/membership-request/{user}/status",
+     *     summary="Update membership request status (Admin)",
+     *     tags={"Membership Requests"},
+     *     security={{"sanctum":{}}},
+     *     @OA\Parameter(
+     *         name="user",
+     *         in="path",
+     *         required=true,
+     *         description="User ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status_id", type="integer", example=2),
+     *             @OA\Property(property="message", type="string", example="Status updated to approved")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Status updated",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="User status updated to Approved"),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="member", type="object",
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="name", type="string", example="John Doe"),
+     *                     @OA\Property(property="email", type="string", example="john@example.com"),
+     *                     @OA\Property(property="status", type="object",
+     *                         @OA\Property(property="id", type="integer", example=2),
+     *                         @OA\Property(property="name", type="string", example="Approved")
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthenticated"),
+     *     @OA\Response(response=403, description="Unauthorized (not admin)"),
+     *     @OA\Response(response=404, description="User or status not found"),
+     *     @OA\Response(response=422, description="Validation error"),
+     *     @OA\Response(response=500, description="Server error")
+     * )
+     */
     public function updateStatus(Request $request, $userId)
     {
         return $this->withExceptionHandling(function () use ($request, $userId) {
@@ -186,7 +296,6 @@ class MembershipRequestController extends ApiController
 
     private function updateUserStatus(User $user, Status $newStatus)
     {
-
         $user->status_id = $newStatus->id;
         $user->updated_by = auth()->user()->id;
 
@@ -199,7 +308,6 @@ class MembershipRequestController extends ApiController
             $user->password_reset_token_expires_at = now()->addHours(32);
             $user->password_updated = false;
             $user->save();
-
         } else {
             $user->save();
         }

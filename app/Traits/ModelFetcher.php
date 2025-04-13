@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 
 trait ModelFetcher
-{
+{use App\Http\Controllers\Api\ModelFetcher;
+
   protected function findModelBySlug(string $modelClass, string $slug, string $logLabel): mixed
   {
     $model = $modelClass::where('slug', $slug)->firstOrFail();
@@ -21,3 +22,6 @@ trait ModelFetcher
     return $model;
   }
 }
+
+
+
